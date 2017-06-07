@@ -1,3 +1,11 @@
+For better performance, I have modified some source code.
+Fisrt, in order to save the .solverstate, I have added the snapshot in ./lib/fast_rcnn/train_multi_gpu.py and ./tools/train_net_multi_gpu.py
+Also, you should change the ./models/pascal_voc/ResNet-101/rfcn_end2end/solver_ohem.prototxt snapshot_prefix .
+Secondly, I have added pad_ratio param in proi_pooling layer as proposed in MSCNN.
+./caffe/src/caffe/proto/caffe.proto
+./caffe/include/caffe/layers/psroi_pooling_layer.hpp
+./caffe/src/caffe/layers/psroi_pooling_layer.cu
+
 # py-R-FCN-multiGPU
 R-FCN: Object Detection via Region-based Fully Convolutional Networks
 
