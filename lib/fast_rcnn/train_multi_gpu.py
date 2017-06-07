@@ -23,7 +23,7 @@ class SolverWrapper(object):
     """
 
     def __init__(self, solver_prototxt, roidb, output_dir, gpu_id,
-                 pretrained_model=None):
+                 pretrained_model=None, previous_state=None):
         """Initialize the SolverWrapper."""
         self.output_dir = output_dir
         self.gpu_id = gpu_id
@@ -45,7 +45,58 @@ class SolverWrapper(object):
             print ('Loading pretrained model '
                    'weights from {:s}').format(pretrained_model)
             self.solver.net.copy_from(pretrained_model)
+        elif previous_state is not None:
+            print ('Restoring State from '
+                        ' from {:s}').format(previous_state)
+            self.solver.restore(previous_state)
+            #normalize the means
+            net = self.solver.net
+            scale_bbox_params_faster_rcnn = (cfg.TRAIN.BBOX_REG and
+                             cfg.TRAIN.BBOX_NORMALIZE_TARGETS and
+                             net.params.has_key('bbox_pred'))
 
+            scale_bbox_params_rfcn = (cfg.TRAIN.BBOX_REG and
+                             cfg.TRAIN.BBOX_NORMALIZE_TARGETS and
+                             net.params.has_key('rfcn_bbox'))
+
+            scale_bbox_params_rpn = (cfg.TRAIN.RPN_NORMALIZE_TARGETS and
+                                 net.params.has_key('rpn_bbox_pred'))
+            if scale_bbox_params_faster_rcnn:
+                print 'normalizing weights in the pretrained model scale_bbox_params_faster_rcnn'
+                net.params['bbox_pred'][0].data[...] = \
+                    (net.params['bbox_pred'][0].data /
+                     self.bbox_stds[:, np.newaxis])
+                net.params['bbox_pred'][1].data[...] = \
+                    (net.params['bbox_pred'][1].data - 
+                     self.bbox_means) / self.bbox_stds
+            if scale_bbox_params_rpn:
+                print 'normalizing weights in the pretrained model scale_bbox_params_rpn'
+                rpn_orig_0 = net.params['rpn_bbox_pred'][0].data.copy()
+                rpn_orig_1 = net.params['rpn_bbox_pred'][1].data.copy()
+                num_anchor = rpn_orig_0.shape[0] / 4
+                # scale and shift with bbox reg unnormalization; then save snapshot
+                self.rpn_means = np.tile(np.asarray(cfg.TRAIN.RPN_NORMALIZE_MEANS),
+                                      num_anchor)
+                self.rpn_stds = np.tile(np.asarray(cfg.TRAIN.RPN_NORMALIZE_STDS),
+                                     num_anchor)
+                net.params['rpn_bbox_pred'][0].data[...] = \
+                    (net.params['rpn_bbox_pred'][0].data /
+                    self.rpn_stds[:, np.newaxis, np.newaxis, np.newaxis])
+                net.params['rpn_bbox_pred'][1].data[...] = \
+                    (net.params['rpn_bbox_pred'][1].data -
+                    self.rpn_means) / self.rpn_stds
+            if scale_bbox_params_rfcn:
+                orig_0 = net.params['rfcn_bbox'][0].data.copy()
+                orig_1 = net.params['rfcn_bbox'][1].data.copy()
+                repeat = orig_1.shape[0] / self.bbox_means.shape[0]
+
+                # scale and shift with bbox reg unnormalization; then save snapshot
+                net.params['rfcn_bbox'][0].data[...] = \
+                        (net.params['rfcn_bbox'][0].data /
+                        np.repeat(self.bbox_stds, repeat).reshape((orig_1.shape[0], 1, 1, 1)))
+                net.params['rfcn_bbox'][1].data[...] = \
+                        (net.params['rfcn_bbox'][1].data -
+                        np.repeat(self.bbox_means, repeat)) / np.repeat(self.bbox_stds, repeat)
         self.solver_param = caffe_pb2.SolverParameter()
         with open(solver_prototxt, 'rt') as f:
             pb2.text_format.Merge(f.read(), self.solver_param)
@@ -114,13 +165,16 @@ class SolverWrapper(object):
 
         infix = ('_' + cfg.TRAIN.SNAPSHOT_INFIX
                  if cfg.TRAIN.SNAPSHOT_INFIX != '' else '')
-        filename = (self.solver_param.snapshot_prefix + infix +
+        # filename = (self.solver_param.snapshot_prefix + infix +
+        #             '_iter_{:d}'.format(self.solver.iter) + '.caffemodel')
+        filename = ('resnet101_rfcn_ohem' + infix +
                     '_iter_{:d}'.format(self.solver.iter) + '.caffemodel')
         filename = os.path.join(self.output_dir, filename)
         if self.gpu_id == 0:
             net.save(str(filename))
         print 'Wrote snapshot to: {:s}'.format(filename)
 
+        self.solver.snapshot()
         if scale_bbox_params_faster_rcnn:
             # restore net to original state
             net.params['bbox_pred'][0].data[...] = orig_0
@@ -139,7 +193,7 @@ class SolverWrapper(object):
     def getSolver(self):
         return self.solver
 
-def solve(proto, roidb, pretrained_model, gpus, uid, rank, output_dir, max_iter):
+def solve(proto, roidb, pretrained_model, gpus, uid, rank, output_dir, max_iter, previous_state=None):
     caffe.set_mode_gpu()
     caffe.set_device(gpus[rank])
     caffe.set_solver_count(len(gpus))
@@ -147,7 +201,7 @@ def solve(proto, roidb, pretrained_model, gpus, uid, rank, output_dir, max_iter)
     caffe.set_multiprocess(True)
     cfg.GPU_ID = gpus[rank]
 
-    solverW = SolverWrapper(proto, roidb, output_dir,rank,pretrained_model)
+    solverW = SolverWrapper(proto, roidb, output_dir,rank,pretrained_model,previous_state)
     solver = solverW.getSolver()
     nccl = caffe.NCCL(solver, uid)
     nccl.bcast()
@@ -200,7 +254,7 @@ def filter_roidb(roidb):
     return filtered_roidb
 
 
-def train_net_multi_gpu(solver_prototxt, roidb, output_dir, pretrained_model, max_iter, gpus):
+def train_net_multi_gpu(solver_prototxt, roidb, output_dir, pretrained_model, max_iter, gpus,previous_state=None):
     """Train a Fast R-CNN network."""
     uid = caffe.NCCL.new_uid()
     caffe.init_log()
@@ -209,7 +263,7 @@ def train_net_multi_gpu(solver_prototxt, roidb, output_dir, pretrained_model, ma
 
     for rank in range(len(gpus)):
         p = Process(target=solve,
-                    args=(solver_prototxt, roidb, pretrained_model, gpus, uid, rank, output_dir, max_iter))
+                    args=(solver_prototxt, roidb, pretrained_model, gpus, uid, rank, output_dir, max_iter, previous_state))
         p.daemon = False
         p.start()
         procs.append(p)
