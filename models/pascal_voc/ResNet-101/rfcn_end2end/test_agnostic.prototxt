@@ -7105,7 +7105,7 @@ layer {
     type: "PSROIPooling"
     psroi_pooling_param {
         spatial_scale: 0.0625
-        output_dim: 31
+        output_dim: 21
         group_size: 7
         pad_ratio: 0
 
@@ -7119,7 +7119,7 @@ layer {
     type: "PSROIPooling"
     psroi_pooling_param {
         spatial_scale: 0.0625
-        output_dim: 31
+        output_dim: 21
         group_size: 7
         pad_ratio: 0.25
     }
