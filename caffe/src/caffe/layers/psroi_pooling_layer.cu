@@ -23,6 +23,7 @@ namespace caffe {
     const int channels,
     const int height, const int width,
     const int pooled_height, const int pooled_width,
+    const Dtype pad_ratio,
     const Dtype* bottom_rois,
     const int output_dim,
     const int group_size,
@@ -38,14 +39,24 @@ namespace caffe {
       // [start, end) interval for spatial sampling
       bottom_rois += n * 5;
       int roi_batch_ind = bottom_rois[0];
+
+    // padding
+      Dtype pad_w, pad_h;
+      pad_w = (bottom_rois[3]-bottom_rois[1]+1)*pad_ratio;
+      pad_h = (bottom_rois[4]-bottom_rois[2]+1)*pad_ratio;
+      // int roi_start_w = round((bottom_rois[1]-pad_w) * spatial_scale);
+      // int roi_start_h = round((bottom_rois[2]-pad_h) * spatial_scale);
+      // int roi_end_w = round((bottom_rois[3]+pad_w) * spatial_scale);
+      // int roi_end_h = round((bottom_rois[4]+pad_h) * spatial_scale);
+
       Dtype roi_start_w =
-        static_cast<Dtype>(round(bottom_rois[1])) * spatial_scale;
+        static_cast<Dtype>(round(bottom_rois[1]-pad_w)) * spatial_scale;
       Dtype roi_start_h =
-        static_cast<Dtype>(round(bottom_rois[2])) * spatial_scale;
+        static_cast<Dtype>(round(bottom_rois[2]-pad_h)) * spatial_scale;
       Dtype roi_end_w =
-        static_cast<Dtype>(round(bottom_rois[3]) + 1.) * spatial_scale;
+        static_cast<Dtype>(round(bottom_rois[3]+pad_w) + 1.) * spatial_scale;
       Dtype roi_end_h =
-        static_cast<Dtype>(round(bottom_rois[4]) + 1.) * spatial_scale;
+        static_cast<Dtype>(round(bottom_rois[4]+pad_h) + 1.) * spatial_scale;
 
       // Force too small ROIs to be 1x1
       Dtype roi_width = max(roi_end_w - roi_start_w, 0.1);  // avoid 0
@@ -103,7 +114,7 @@ namespace caffe {
     PSROIPoolingForward<Dtype> << <CAFFE_GET_BLOCKS(count),
       CAFFE_CUDA_NUM_THREADS >> >(count, bottom_data, spatial_scale_,
       channels_, height_, width_, pooled_height_,
-      pooled_width_, bottom_rois, output_dim_, group_size_,
+      pooled_width_, pad_ratio_, bottom_rois, output_dim_, group_size_,
       top_data, mapping_channel_ptr);
     CUDA_POST_KERNEL_CHECK;
   }
@@ -119,6 +130,7 @@ namespace caffe {
     const int height, const int width,
     const int pooled_height, const int pooled_width,
     const int output_dim,
+    const Dtype pad_ratio,
     Dtype* bottom_diff,
     const Dtype* bottom_rois) {
     CUDA_KERNEL_LOOP(index, nthreads) {
@@ -130,15 +142,22 @@ namespace caffe {
       // [start, end) interval for spatial sampling
       bottom_rois += n * 5;
       int roi_batch_ind = bottom_rois[0];
-      Dtype roi_start_w =
-        static_cast<Dtype>(round(bottom_rois[1])) * spatial_scale;
-      Dtype roi_start_h =
-        static_cast<Dtype>(round(bottom_rois[2])) * spatial_scale;
-      Dtype roi_end_w =
-        static_cast<Dtype>(round(bottom_rois[3]) + 1.) * spatial_scale;
-      Dtype roi_end_h =
-        static_cast<Dtype>(round(bottom_rois[4]) + 1.) * spatial_scale;
+      Dtype pad_w, pad_h;
+      pad_w = (bottom_rois[3]-bottom_rois[1]+1)*pad_ratio;
+      pad_h = (bottom_rois[4]-bottom_rois[2]+1)*pad_ratio;
+      // int roi_start_w = round((bottom_rois[1]-pad_w) * spatial_scale);
+      // int roi_start_h = round((bottom_rois[2]-pad_h) * spatial_scale);
+      // int roi_end_w = round((bottom_rois[3]+pad_w) * spatial_scale);
+      // int roi_end_h = round((bottom_rois[4]+pad_h) * spatial_scale);
 
+      Dtype roi_start_w =
+        static_cast<Dtype>(round(bottom_rois[1]-pad_w)) * spatial_scale;
+      Dtype roi_start_h =
+        static_cast<Dtype>(round(bottom_rois[2]-pad_h)) * spatial_scale;
+      Dtype roi_end_w =
+        static_cast<Dtype>(round(bottom_rois[3]+pad_w) + 1.) * spatial_scale;
+      Dtype roi_end_h =
+        static_cast<Dtype>(round(bottom_rois[4]+pad_h) + 1.) * spatial_scale;
       // Force too small ROIs to be 1x1
       Dtype roi_width = max(roi_end_w - roi_start_w, 0.1);  // avoid 0
       Dtype roi_height = max(roi_end_h - roi_start_h, 0.1);
@@ -196,7 +215,7 @@ namespace caffe {
     PSROIPoolingBackwardAtomic<Dtype> << <CAFFE_GET_BLOCKS(count),
       CAFFE_CUDA_NUM_THREADS >> >(count, top_diff, mapping_channel_ptr,
       top[0]->num(), spatial_scale_, channels_, height_, width_,
-      pooled_height_, pooled_width_, output_dim_, bottom_diff,
+      pooled_height_, pooled_width_, output_dim_, pad_ratio_, bottom_diff,
       bottom_rois);
     CUDA_POST_KERNEL_CHECK;
   }

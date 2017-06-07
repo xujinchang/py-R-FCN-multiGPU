@@ -59,6 +59,7 @@ class PSROIPoolingLayer : public Layer<Dtype> {
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
   Dtype spatial_scale_;
+  Dtype pad_ratio_;
   int output_dim_;
   int group_size_;
 

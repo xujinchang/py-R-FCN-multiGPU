@@ -7100,18 +7100,42 @@ layer {
 layer {
     bottom: "rfcn_cls"
     bottom: "rois"
-    top: "psroipooled_cls_rois"
-    name: "psroipooled_cls_rois"
+    top: "psroipooled_cls_rois_ori"
+    name: "psroipooled_cls_rois_ori"
     type: "PSROIPooling"
     psroi_pooling_param {
         spatial_scale: 0.0625
-        output_dim: 21
+        output_dim: 31
         group_size: 7
+        pad_ratio: 0
+
+    }
+}
+layer {
+    bottom: "rfcn_cls"
+    bottom: "rois"
+    top: "psroipooled_cls_rois_pad"
+    name: "psroipooled_cls_rois_pad"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 31
+        group_size: 7
+        pad_ratio: 0.25
     }
 }
 
 layer {
-    bottom: "psroipooled_cls_rois"
+  name: "cls_rois_pad_ori"
+  type: "Concat"
+  bottom: "psroipooled_cls_rois_ori"
+  bottom: "psroipooled_cls_rois_pad"
+  top: "cls_rois_pad_ori"
+}
+
+
+layer {
+    bottom: "cls_rois_pad_ori"
     top: "cls_score"
     name: "ave_cls_score_rois"
     type: "Pooling"
@@ -7122,22 +7146,43 @@ layer {
     }
 }
 
-
 layer {
     bottom: "rfcn_bbox"
     bottom: "rois"
-    top: "psroipooled_loc_rois"
-    name: "psroipooled_loc_rois"
+    top: "psroipooled_loc_rois_ori"
+    name: "psroipooled_loc_rois_ori"
     type: "PSROIPooling"
     psroi_pooling_param {
         spatial_scale: 0.0625
         output_dim: 8
         group_size: 7
+        pad_ratio: 0
     }
 }
+layer {
+    bottom: "rfcn_bbox"
+    bottom: "rois"
+    top: "psroipooled_loc_rois_pad"
+    name: "psroipooled_loc_rois_pad"
+    type: "PSROIPooling"
+    psroi_pooling_param {
+        spatial_scale: 0.0625
+        output_dim: 8
+        group_size: 7
+        pad_ratio: 0.25
+    }
+}
+layer {
+  name: "loc_rois_pad_ori"
+  type: "Concat"
+  bottom: "psroipooled_loc_rois_ori"
+  bottom: "psroipooled_loc_rois_pad"
+  top: "loc_rois_pad_ori"
+}
+
 
 layer {
-    bottom: "psroipooled_loc_rois"
+    bottom: "loc_rois_pad_ori"
     top: "bbox_pred_pre"
     name: "ave_bbox_pred_rois"
     type: "Pooling"
@@ -7146,7 +7191,8 @@ layer {
         kernel_size: 7
         stride: 7
     }
-}
+}    
+
 
 
 #-----------------------output------------------------
