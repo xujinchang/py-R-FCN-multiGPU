@@ -7213,7 +7213,7 @@ layer {
 layer {
     bottom: "cls_rois_pad_ori"
     top: "cls_score_high"
-    name: "ave_cls_score_rois"
+    name: "cls_score_high"
     type: "Pooling"
     pooling_param {
         pool: AVE
@@ -7260,7 +7260,7 @@ layer {
 layer {
     bottom: "loc_rois_pad_ori"
     top: "bbox_pred_high"
-    name: "ave_bbox_pred_rois"
+    name: "bbox_pred_high"
     type: "Pooling"
     pooling_param {
         pool: AVE
@@ -7305,7 +7305,7 @@ layer {
 layer {
   bottom: "bbox_pred_high"
   top: "bbox_pred"
-  name: "bbox_pred"
+  name: "bbox_pred_conv"
   type: "Convolution"
   param {
     lr_mult: 1
