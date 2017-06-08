@@ -7136,7 +7136,7 @@ layer {
 
 layer {
     bottom: "cls_rois_pad_ori"
-    top: "cls_score"
+    top: "cls_score_high"
     name: "ave_cls_score_rois"
     type: "Pooling"
     pooling_param {
@@ -7145,6 +7145,8 @@ layer {
         stride: 7
     }
 }
+
+
 
 layer {
     bottom: "rfcn_bbox"
@@ -7183,7 +7185,7 @@ layer {
 
 layer {
     bottom: "loc_rois_pad_ori"
-    top: "bbox_pred_pre"
+    top: "bbox_pred_high"
     name: "ave_bbox_pred_rois"
     type: "Pooling"
     pooling_param {
@@ -7192,6 +7194,73 @@ layer {
         stride: 7
     }
 }    
+
+layer {
+  bottom: "cls_score_high"
+  top: "cls_score"
+  name: "cls_score"
+  type: "Convolution"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 21
+    kernel_size: 1
+    #pad: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  bottom: "cls_score"
+  top: "cls_score"
+  name: "cls_score_relu"
+  type: "ReLU"
+}
+
+
+layer {
+  bottom: "bbox_pred_high"
+  top: "bbox_pred_pre"
+  name: "bbox_pred_pre"
+  type: "Convolution"
+  param {
+    lr_mult: 1
+    decay_mult: 1
+  }
+  param {
+    lr_mult: 2
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 8
+    kernel_size: 1
+    #pad: 1
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  bottom: "bbox_pred_pre"
+  top: "bbox_pred_pre"
+  name: "bbox_pred_relu"
+  type: "ReLU"
+}
 
 
 
