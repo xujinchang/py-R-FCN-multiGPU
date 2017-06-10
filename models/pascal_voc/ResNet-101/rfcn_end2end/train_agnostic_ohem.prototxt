@@ -7085,7 +7085,7 @@ layer {
   python_param {
     module: 'rpn.proposal_target_layer'
     layer: 'ProposalTargetLayer'
-    param_str: "'num_classes': 2"
+    param_str: "'num_classes': 21"
   }
 }
 
@@ -7096,9 +7096,9 @@ layer {
     name: "conv_new_1"
     type: "Convolution"
     convolution_param {
-        num_output: 1024
-        kernel_size: 1
-        pad: 0
+        num_output: 512
+        kernel_size: 3
+        pad: 1
         weight_filler {
             type: "gaussian"
             std: 0.01
@@ -7123,217 +7123,220 @@ layer {
     type: "ReLU"
 }
 
+
+
 layer {
-    bottom: "conv_new_1"
-    top: "rfcn_cls"
-    name: "rfcn_cls"
-    type: "Convolution"
-    convolution_param {
-        num_output: 1029 #21*(7^2) cls_num*(score_maps_size^2)
-        kernel_size: 1
-        pad: 0
-        weight_filler {
-            type: "gaussian"
-            std: 0.01
-        }
-        bias_filler {
-            type: "constant"
-            value: 0
-        }
-    }
-    param {
-        lr_mult: 1.0
-    }
-    param {
-        lr_mult: 2.0
-    }
+  name: "roi_pool5_ori"
+  type: "ROIPooling"
+  bottom: "conv_new_1"
+  bottom: "rois"
+  top: "pool5_ori"
+  roi_pooling_param {
+    pooled_w: 7
+    pooled_h: 7
+    spatial_scale: 0.0625 # 1/16
+    pad_ratio:0
+  }
+}
+
+layer {
+  name: "roi_pool5_pad"
+  type: "ROIPooling"
+  bottom: "conv_new_1"
+  bottom: "rois"
+  top: "pool5_pad"
+  roi_pooling_param {
+    pooled_w: 7
+    pooled_h: 7
+    spatial_scale: 0.0625 # 1/16
+    pad_ratio:0.5
+  }
+}
+
+
+layer {
+  name: "fc6_ori"
+  type: "InnerProduct"
+  bottom: "pool5_ori"
+  top: "fc6_ori"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2048
+  }
 }
 layer {
-    bottom: "conv_new_1"
-    top: "rfcn_bbox"
-    name: "rfcn_bbox"
-    type: "Convolution"
-    convolution_param {
-        num_output: 392 #8*(7^2) cls_num*(score_maps_size^2)
-        kernel_size: 1
-        pad: 0
-        weight_filler {
-            type: "gaussian"
-            std: 0.01
-        }
-        bias_filler {
-            type: "constant"
-            value: 0
-        }
-    }
-    param {
-        lr_mult: 1.0
-    }
-    param {
-        lr_mult: 2.0
-    }
+  name: "relu6_ori"
+  type: "ReLU"
+  bottom: "fc6_ori"
+  top: "fc6_ori"
 }
+layer {
+  name: "drop6_ori"
+  type: "Dropout"
+  bottom: "fc6_ori"
+  top: "fc6_ori"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+layer {
+  name: "fc7_ori"
+  type: "InnerProduct"
+  bottom: "fc6_ori"
+  top: "fc7_ori"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2048
+  }
+}
+layer {
+  name: "relu7_ori"
+  type: "ReLU"
+  bottom: "fc7_ori"
+  top: "fc7_ori"
+}
+layer {
+  name: "drop7_ori"
+  type: "Dropout"
+  bottom: "fc7_ori"
+  top: "fc7_ori"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+
+layer {
+  name: "fc6_pad"
+  type: "InnerProduct"
+  bottom: "pool5_pad"
+  top: "fc6_pad"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2048
+  }
+}
+layer {
+  name: "relu6_pad"
+  type: "ReLU"
+  bottom: "fc6_pad"
+  top: "fc6_pad"
+}
+layer {
+  name: "drop6_pad"
+  type: "Dropout"
+  bottom: "fc6_pad"
+  top: "fc6_pad"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+layer {
+  name: "fc7_pad"
+  type: "InnerProduct"
+  bottom: "fc6_pad"
+  top: "fc7_pad"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 2048
+  }
+}
+layer {
+  name: "relu7_pad"
+  type: "ReLU"
+  bottom: "fc7_pad"
+  top: "fc7_pad"
+}
+layer {
+  name: "drop7_pad"
+  type: "Dropout"
+  bottom: "fc7_pad"
+  top: "fc7_pad"
+  dropout_param {
+    dropout_ratio: 0.5
+  }
+}
+
+layer {
+  name: "f7_pad_ori"
+  type: "Concat"
+  bottom: "fc7_ori"
+  bottom: "fc7_pad"
+  top: "f7_pad_ori"
+}
+
+
+layer {
+  name: "cls_score"
+  type: "InnerProduct"
+  bottom: "f7_pad_ori"
+  top: "cls_score"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 21
+    weight_filler {
+      type: "gaussian"
+      std: 0.01
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+layer {
+  name: "bbox_pred"
+  type: "InnerProduct"
+  bottom: "f7_pad_ori"
+  top: "bbox_pred"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 84
+    weight_filler {
+      type: "gaussian"
+      std: 0.001
+    }
+    bias_filler {
+      type: "constant"
+      value: 0
+    }
+  }
+}
+
+
+
+
 
 #--------------position sensitive RoI pooling--------------
-layer {
-    bottom: "rfcn_cls"
-    bottom: "rois"
-    top: "psroipooled_cls_rois_ori"
-    name: "psroipooled_cls_rois_ori"
-    type: "PSROIPooling"
-    psroi_pooling_param {
-        spatial_scale: 0.0625
-        output_dim: 21
-        group_size: 7
-        pad_ratio: 0
-    }
-}
-#加pad_radio
-layer {
-    bottom: "rfcn_cls"
-    bottom: "rois"
-    top: "psroipooled_cls_rois_pad"
-    name: "psroipooled_cls_rois_pad"
-    type: "PSROIPooling"
-    psroi_pooling_param {
-        spatial_scale: 0.0625
-        output_dim: 21
-        group_size: 7
-        pad_ratio: 0.25
-    }
-}
-layer {
-  name: "cls_rois_pad_ori"
-  type: "Concat"
-  bottom: "psroipooled_cls_rois_ori"
-  bottom: "psroipooled_cls_rois_pad"
-  top: "cls_rois_pad_ori"
-}
-
-layer {
-    bottom: "cls_rois_pad_ori"
-    top: "cls_score_high"
-    name: "cls_score_high"
-    type: "Pooling"
-    pooling_param {
-        pool: AVE
-        kernel_size: 7
-        stride: 7
-    }
-}
-
-layer {
-    bottom: "rfcn_bbox"
-    bottom: "rois"
-    top: "psroipooled_loc_rois_ori"
-    name: "psroipooled_loc_rois_ori"
-    type: "PSROIPooling"
-    psroi_pooling_param {
-        spatial_scale: 0.0625
-        output_dim: 8
-        group_size: 7
-        pad_ratio: 0
-    }
-}
-##加pad_radio
-layer {
-    bottom: "rfcn_bbox"
-    bottom: "rois"
-    top: "psroipooled_loc_rois_pad"
-    name: "psroipooled_loc_rois_pad"
-    type: "PSROIPooling"
-    psroi_pooling_param {
-        spatial_scale: 0.0625
-        output_dim: 8
-        group_size: 7
-        pad_ratio: 0.25
-    }
-}
-layer {
-  name: "loc_rois_pad_ori"
-  type: "Concat"
-  bottom: "psroipooled_loc_rois_ori"
-  bottom: "psroipooled_loc_rois_pad"
-  top: "loc_rois_pad_ori"
-}
-
-layer {
-    bottom: "loc_rois_pad_ori"
-    top: "bbox_pred_high"
-    name: "bbox_pred_high"
-    type: "Pooling"
-    pooling_param {
-        pool: AVE
-        kernel_size: 7
-        stride: 7
-    }
-}
-layer {
-  bottom: "cls_score_high"
-  top: "cls_score"
-  name: "cls_score"
-  type: "Convolution"
-  param {
-    lr_mult: 1.0
-  
-  }
-  param {
-    lr_mult: 2.0
-
-  }
-  convolution_param {
-    num_output: 21
-    kernel_size: 1
-    #pad: 1
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-    }
-  }
-}
-layer {
-  bottom: "cls_score"
-  top: "cls_score"
-  name: "cls_score_relu"
-  type: "ReLU"
-}
-
-
-layer {
-  bottom: "bbox_pred_high"
-  top: "bbox_pred"
-  name: "bbox_pred_conv"
-  type: "Convolution"
-  param {
-    lr_mult: 1.0
-
-  }
-  param {
-    lr_mult: 2.0
-
-  }
-  convolution_param {
-    num_output: 8
-    kernel_size: 1
-    #pad: 1
-    weight_filler {
-      type: "gaussian"
-      std: 0.01
-    }
-    bias_filler {
-      type: "constant"
-    }
-  }
-}
-layer {
-  bottom: "bbox_pred"
-  top: "bbox_pred"
-  name: "bbox_pred_relu"
-  type: "ReLU"
-}
 
 
 
