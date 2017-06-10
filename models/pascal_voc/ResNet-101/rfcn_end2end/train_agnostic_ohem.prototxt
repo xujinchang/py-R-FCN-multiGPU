@@ -7274,12 +7274,12 @@ layer {
   name: "cls_score"
   type: "Convolution"
   param {
-    lr_mult: 1
-    decay_mult: 1
+    lr_mult: 1.0
+  
   }
   param {
-    lr_mult: 2
-    decay_mult: 0
+    lr_mult: 2.0
+
   }
   convolution_param {
     num_output: 21
@@ -7308,12 +7308,12 @@ layer {
   name: "bbox_pred_conv"
   type: "Convolution"
   param {
-    lr_mult: 1
-    decay_mult: 1
+    lr_mult: 1.0
+
   }
   param {
-    lr_mult: 2
-    decay_mult: 0
+    lr_mult: 2.0
+
   }
   convolution_param {
     num_output: 8

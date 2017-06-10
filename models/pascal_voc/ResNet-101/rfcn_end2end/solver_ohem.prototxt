@@ -11,6 +11,6 @@ weight_decay: 0.0005
 # function
 snapshot: 0
 # We still use the snapshot prefix, though
-snapshot_prefix: "resnet101_rfcn_ohem"
+snapshot_prefix: "/home/xujinchang/py-R-FCN-multiGPU/model_xu/rfcn_end2end_ohem/resnet101_rfcn_ohem"
 iter_size: 1
 # debug_info: true
