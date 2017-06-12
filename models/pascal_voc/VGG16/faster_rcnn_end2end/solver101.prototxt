@@ -1,4 +1,4 @@
-train_net: "models/pascal_voc/ResNet-101/rfcn_end2end/train_101fcnn_ohem.prototxt"
+train_net: "models/pascal_voc/VGG16/faster_rcnn_end2end/train_agnostic_ohem.prototxt"
 base_lr: 0.001
 lr_policy: "step"
 gamma: 0.1
@@ -11,6 +11,6 @@ weight_decay: 0.0005
 # function
 snapshot: 0
 # We still use the snapshot prefix, though
-snapshot_prefix: "/home/xujinchang/py-R-FCN-multiGPU/model_xu/rfcn_end2end_ohem/fcnn101_ohem"
+snapshot_prefix: "/home/xujinchang/py-R-FCN-multiGPU/model_xu/rfcn_end2end_ohem/resnet101_rfcn_ohem"
 iter_size: 1
 # debug_info: true
