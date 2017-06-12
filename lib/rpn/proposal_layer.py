@@ -148,6 +148,9 @@ class ProposalLayer(caffe.Layer):
         if post_nms_topN > 0:
             keep = keep[:post_nms_topN]
         proposals = proposals[keep, :]
+        proposals = _data_augumention(proposals)
+    
+        proposals = clip_boxes(proposals, im_info[:2])
         scores = scores[keep]
 
         # Output rois blob
@@ -178,3 +181,14 @@ def _filter_boxes(boxes, min_size):
     hs = boxes[:, 3] - boxes[:, 1] + 1
     keep = np.where((ws >= min_size) & (hs >= min_size))[0]
     return keep
+
+def _data_augumention(boxes):
+    """Remove all boxes with any side smaller than min_size."""
+    ws = boxes[:, 2] - boxes[:, 0] + 1
+    hs = boxes[:, 3] - boxes[:, 1] + 1
+    boxes[:, 0] = boxes[:, 0] + ws * (0.2*random.random() - 0.1)
+    boxes[:, 1] = boxes[:, 1] + hs * (0.2*random.random() - 0.1)
+    boxes[;, 2] = boxes[:, 2] + ws * (0.2*random.random() - 0.1)
+    boxes[:, 3] = boxes[:, 3] + hs * (0.2*random.random() - 0.1)
+   
+    return boxes
