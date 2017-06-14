@@ -12,7 +12,7 @@ from fast_rcnn.config import cfg
 from generate_anchors import generate_anchors
 from fast_rcnn.bbox_transform import bbox_transform_inv, clip_boxes
 from fast_rcnn.nms_wrapper import nms
-
+import random
 DEBUG = False
 
 class ProposalLayer(caffe.Layer):
@@ -188,7 +188,7 @@ def _data_augumention(boxes):
     hs = boxes[:, 3] - boxes[:, 1] + 1
     boxes[:, 0] = boxes[:, 0] + ws * (0.2*random.random() - 0.1)
     boxes[:, 1] = boxes[:, 1] + hs * (0.2*random.random() - 0.1)
-    boxes[;, 2] = boxes[:, 2] + ws * (0.2*random.random() - 0.1)
+    boxes[:, 2] = boxes[:, 2] + ws * (0.2*random.random() - 0.1)
     boxes[:, 3] = boxes[:, 3] + hs * (0.2*random.random() - 0.1)
    
     return boxes
